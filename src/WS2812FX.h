@@ -63,9 +63,11 @@
 #define MAX_NUM_SEGMENTS 10
 #define NUM_COLORS        3 /* number of colors per segment */
 #define MAX_CUSTOM_MODES  4
+#define META_SEGMENT     MAX_NUM_SEGMENTS-1
 #define SEGMENT          _segments[_segment_index]
 #define SEGMENT_RUNTIME  _segment_runtimes[_segment_index]
 #define SEGMENT_LENGTH   (SEGMENT.stop - SEGMENT.start + 1)
+#define IS_META_SEGMENT  _segment_index == MAX_NUM_SEGMENTS-1
 
 // some common colors
 #define RED        (uint32_t)0xFF0000

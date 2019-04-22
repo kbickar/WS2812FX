@@ -69,6 +69,15 @@ void WS2812FX::service() {
   if(_running || _triggered) {
     unsigned long now = millis(); // Be aware, millis() rolls over every 49 days
     bool doShow = false;
+    _segment_index = META_SEGMENT;
+    CLR_FRAME;
+    if(now > SEGMENT_RUNTIME.next_time || _triggered) {
+      SET_FRAME;
+      doShow = true;
+      uint16_t delay = (this->*_mode[SEGMENT.mode])();
+      SEGMENT_RUNTIME.next_time = now + max(delay, SPEED_MIN);
+      SEGMENT_RUNTIME.counter_mode_call++;
+    }
     for(uint8_t i=0; i < _num_segments; i++) {
       _segment_index = i;
       CLR_FRAME;
@@ -91,27 +100,22 @@ void WS2812FX::service() {
 // overload setPixelColor() functions so we can use gamma correction
 // (see https://learn.adafruit.com/led-tricks-gamma-correction/the-issue)
 void WS2812FX::setPixelColor(uint16_t n, uint32_t c) {
-  if(IS_GAMMA) {
-    uint8_t w = (c >> 24) & 0xFF;
-    uint8_t r = (c >> 16) & 0xFF;
-    uint8_t g = (c >>  8) & 0xFF;
-    uint8_t b =  c        & 0xFF;
-    Adafruit_NeoPixel::setPixelColor(n, gamma8(r), gamma8(g), gamma8(b), gamma8(w));
-  } else {
-    Adafruit_NeoPixel::setPixelColor(n, c);
-  }
+  uint8_t w = (c >> 24) & 0xFF;
+  uint8_t r = (c >> 16) & 0xFF;
+  uint8_t g = (c >>  8) & 0xFF;
+  uint8_t b =  c        & 0xFF;
+  setPixelColor(n, r, g, b, w);
 }
 
 void WS2812FX::setPixelColor(uint16_t n, uint8_t r, uint8_t g, uint8_t b) {
-  if(IS_GAMMA) {
-    Adafruit_NeoPixel::setPixelColor(n, gamma8(r), gamma8(g), gamma8(b));
-  } else {
-    Adafruit_NeoPixel::setPixelColor(n, r, g, b);
-  }
+  setPixelColor(n, r, g, b, 0);
 }
 
 void WS2812FX::setPixelColor(uint16_t n, uint8_t r, uint8_t g, uint8_t b, uint8_t w) {
-  if(IS_GAMMA) {
+  if (IS_META_SEGMENT){
+    setMode(n, FX_MODE_STATIC);    
+    setColor(r, g, b, w);    
+  } else if(IS_GAMMA) {
     Adafruit_NeoPixel::setPixelColor(n, gamma8(r), gamma8(g), gamma8(b), gamma8(w));
   } else {
     Adafruit_NeoPixel::setPixelColor(n, r, g, b, w);
@@ -232,7 +236,7 @@ void WS2812FX::setLength(uint16_t b) {
   resetSegmentRuntimes();
   if (b < 1) b = 1;
 
-  // Decrease numLEDs to maximum available memory
+  // Decrease numLEDs to maximize available memory
   do {
       Adafruit_NeoPixel::updateLength(b);
       b--;
@@ -298,7 +302,6 @@ uint16_t WS2812FX::getSpeed(void) {
 uint16_t WS2812FX::getSpeed(uint8_t seg) {
   return _segments[seg].speed;
 }
-
 
 uint8_t WS2812FX::getOptions(uint8_t seg) {
   return _segments[seg].options;
